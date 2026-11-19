@@ -1,0 +1,1645 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3D 정다면체 탐구 실험실 (중1 수학)</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Noto Sans KR -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <!-- Three.js r128 & OrbitControls -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+  <style>
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background-color: #f8fafc;
+      color: #1e293b;
+      overflow-x: hidden;
+      user-select: none;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 8px;
+      border-radius: 999px;
+      background: #cbd5e1;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      margin-top: -6px;
+      background-color: #2563eb;
+      height: 20px;
+      width: 20px;
+      border-radius: 50%;
+      border: 3px solid #ffffff;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
+      transition: transform 0.15s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+
+    #canvas-container canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+      outline: none;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-4px); }
+      40%, 80% { transform: translateX(4px); }
+    }
+    .animate-shake {
+      animation: shake 0.35s ease-in-out;
+    }
+
+    @keyframes pulseGentle {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+    }
+    .animate-pulse-gentle {
+      animation: pulseGentle 2s infinite;
+    }
+
+    /* Hide spin buttons in number input for cleaner mobile/tablet layout */
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type="number"] {
+      -moz-appearance: textfield;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Top Header -->
+  <header class="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-30">
+    <div class="max-w-[1440px] mx-auto px-4 py-3 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
+      <!-- App Title -->
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-extrabold text-lg shadow">
+            3D
+          </div>
+          <div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <h1 class="text-lg sm:text-xl font-extrabold text-slate-800 tracking-tight">3D 정다면체 탐구 실험실 (중1 수학)</h1>
+              <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                교과서 200쪽
+              </span>
+            </div>
+            <p class="text-xs text-slate-500">전개도를 접고 펼치며 꼭짓점·모서리·면을 직접 세어 정리 표를 완성해 보세요!</p>
+          </div>
+        </div>
+
+        <!-- Locked/Unlocked Answer Modal Button (Mobile/Tablet position) -->
+        <button id="btn-answer-modal-mobile" class="xl:hidden px-3 py-2 rounded-xl text-xs font-bold border-2 border-slate-300 bg-slate-100 text-slate-500 flex items-center gap-1.5 transition shrink-0">
+          <span class="lock-icon">🔒</span>
+          <span class="lock-label">정답표</span>
+        </button>
+      </div>
+
+      <!-- 5 Polyhedra Selector Tabs + Desktop Answer Modal Button -->
+      <div class="flex flex-wrap items-center justify-between xl:justify-end gap-2">
+        <nav class="flex flex-wrap items-center gap-1.5" id="poly-selector">
+          <button data-type="tetra" class="poly-tab px-3 py-2 rounded-xl text-xs sm:text-sm font-bold border-2 transition-all flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded-full inline-block" style="background-color:#f43f5e;"></span>
+            정사면체
+          </button>
+          <button data-type="cube" class="poly-tab px-3 py-2 rounded-xl text-xs sm:text-sm font-bold border-2 transition-all flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded-full inline-block" style="background-color:#0ea5e9;"></span>
+            정육면체
+          </button>
+          <button data-type="octa" class="poly-tab px-3 py-2 rounded-xl text-xs sm:text-sm font-bold border-2 transition-all flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded-full inline-block" style="background-color:#f59e0b;"></span>
+            정팔면체
+          </button>
+          <button data-type="dodeca" class="poly-tab px-3 py-2 rounded-xl text-xs sm:text-sm font-bold border-2 transition-all flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded-full inline-block" style="background-color:#10b981;"></span>
+            정십이면체
+          </button>
+          <button data-type="icosa" class="poly-tab px-3 py-2 rounded-xl text-xs sm:text-sm font-bold border-2 transition-all flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded-full inline-block" style="background-color:#8b5cf6;"></span>
+            정이십면체
+          </button>
+        </nav>
+
+        <!-- Locked/Unlocked Summary Modal Button (Desktop) -->
+        <button id="btn-answer-modal" class="hidden xl:flex px-3.5 py-2 rounded-xl text-xs font-extrabold border-2 border-slate-300 bg-slate-100 text-slate-500 items-center gap-1.5 transition">
+          <span class="lock-icon">🔒</span>
+          <span class="lock-label">정답표 (탐구 완료 후 해제)</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace: 60% Left/Center 3D Viewport + 40% Right Study & Table Panel -->
+  <main class="flex-1 max-w-[1440px] w-full mx-auto px-4 py-4 flex flex-col lg:flex-row gap-4">
+
+    <!-- Left/Center 3D Viewport (60% on desktop) -->
+    <section class="w-full lg:w-[60%] flex flex-col gap-3">
+      <!-- 3D Canvas Container -->
+      <div class="relative bg-gradient-to-b from-slate-100 via-slate-100 to-slate-200 rounded-2xl border border-slate-300 shadow-inner overflow-hidden h-[420px] sm:h-[500px] lg:h-[560px]" id="canvas-container">
+        <!-- Top-Left Active Polyhedron Badge -->
+        <div class="absolute top-3 left-3 z-10 flex flex-col gap-2 pointer-events-none max-w-[75%]">
+          <div class="bg-white/95 backdrop-blur px-3.5 py-2.5 rounded-xl shadow-sm border border-slate-200">
+            <div class="flex items-center gap-2">
+              <span id="badge-dot" class="w-3.5 h-3.5 rounded-full shrink-0" style="background-color:#f43f5e;"></span>
+              <h2 id="badge-title" class="text-sm sm:text-base font-extrabold text-slate-800">정사면체 (Regular Tetrahedron)</h2>
+            </div>
+            <p id="badge-subtitle" class="text-xs text-slate-600 mt-0.5">면의 모양: 정삼각형 · 한 꼭짓점에 모인 면: 3개</p>
+          </div>
+
+          <!-- One Vertex Interior Angle Banner -->
+          <div id="vertex-angle-banner" class="hidden bg-amber-50/95 backdrop-blur border-2 border-amber-300 text-amber-950 px-3.5 py-2.5 rounded-xl shadow-md">
+            <div class="text-xs font-extrabold text-amber-700 flex items-center gap-1">
+              <span>📐 한 꼭짓점에 모인 면의 각도 합</span>
+            </div>
+            <p id="vertex-angle-text" class="text-xs sm:text-sm font-bold mt-1 leading-snug"></p>
+          </div>
+        </div>
+
+        <!-- Top-Right Quick Camera Tools -->
+        <div class="absolute top-3 right-3 z-10 flex flex-col gap-2">
+          <button id="btn-reset-cam" class="bg-white/95 hover:bg-white text-slate-700 px-3 py-2 rounded-xl shadow border border-slate-200 text-xs font-bold flex items-center gap-1.5 transition">
+            <span>🎯</span> <span>시점 초기화</span>
+          </button>
+          <button id="btn-auto-rotate" class="bg-white/95 hover:bg-white text-slate-700 px-3 py-2 rounded-xl shadow border border-slate-200 text-xs font-bold flex items-center gap-1.5 transition">
+            <span>🔄</span> <span id="rotate-label">자동 회전: OFF</span>
+          </button>
+        </div>
+
+        <!-- Bottom-Left Guide -->
+        <div class="absolute bottom-3 left-3 z-10 bg-slate-900/80 text-white text-[11px] sm:text-xs px-3 py-1.5 rounded-lg backdrop-blur-sm pointer-events-none">
+          🖱️ 드래그: 360° 회전 · 휠/핀치: 확대/축소 · 모드 선택 후 도형 클릭!
+        </div>
+
+        <!-- Bottom-Right Fold Percentage -->
+        <div class="absolute bottom-3 right-3 z-10 bg-white/95 text-slate-800 text-xs font-extrabold px-3 py-1.5 rounded-lg shadow border border-slate-200 pointer-events-none">
+          접힘: <span id="fold-percent-badge" class="text-indigo-600">100%</span>
+        </div>
+      </div>
+
+      <!-- 3D Interaction & Folding Control Panel -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col gap-3">
+        <!-- Row 1: Counting Mode Selector Buttons -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <span class="text-xs font-extrabold text-slate-700 shrink-0">🎯 클릭 탐구 모드:</span>
+          <div class="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-1.5 flex-1 sm:justify-end" id="counting-mode-group">
+            <button data-mode="observe" class="mode-btn px-3 py-2 rounded-xl text-xs font-bold border-2 transition flex items-center justify-center gap-1 bg-slate-800 text-white border-slate-800">
+              <span>👀</span> <span>관찰 모드</span>
+            </button>
+            <button data-mode="vertex" class="mode-btn px-3 py-2 rounded-xl text-xs font-bold border-2 transition flex items-center justify-center gap-1 bg-white text-rose-700 border-rose-200 hover:bg-rose-50">
+              <span>🔴</span> <span>꼭짓점 세기</span>
+            </button>
+            <button data-mode="edge" class="mode-btn px-3 py-2 rounded-xl text-xs font-bold border-2 transition flex items-center justify-center gap-1 bg-white text-amber-700 border-amber-200 hover:bg-amber-50">
+              <span>📏</span> <span>모서리 세기</span>
+            </button>
+            <button data-mode="face" class="mode-btn px-3 py-2 rounded-xl text-xs font-bold border-2 transition flex items-center justify-center gap-1 bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50">
+              <span>🔷</span> <span>면 세기</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Row 2: Net Folding Slider & Toggle Button -->
+        <div class="flex flex-col sm:flex-row sm:items-center gap-3 pt-2 border-t border-slate-100">
+          <button id="btn-play-fold" class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm shadow-sm transition flex items-center justify-center gap-2 shrink-0">
+            <span id="play-fold-icon">📂</span>
+            <span id="play-fold-text">전개도 펼치기</span>
+          </button>
+
+          <div class="flex-1 flex items-center gap-3 bg-slate-50 px-3.5 py-2 rounded-xl border border-slate-200">
+            <span class="text-xs font-bold text-slate-500 whitespace-nowrap">전개도 (0%)</span>
+            <input type="range" id="slider-fold" min="0" max="100" value="100" class="w-full" />
+            <span class="text-xs font-bold text-indigo-700 whitespace-nowrap">입체 (100%)</span>
+          </div>
+        </div>
+
+        <!-- Row 3: Opacity Slider & Highlight One Vertex -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+          <div class="flex items-center gap-2.5 bg-slate-50 px-3.5 py-2 rounded-xl border border-slate-200">
+            <span class="text-xs font-bold text-slate-700 whitespace-nowrap">🔍 투명도:</span>
+            <input type="range" id="slider-opacity" min="20" max="100" value="90" class="w-full" />
+            <span id="opacity-value" class="text-xs font-bold text-slate-600 w-9 text-right">90%</span>
+          </div>
+
+          <button id="btn-highlight-vertex" class="px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 border-2 border-amber-300 text-amber-900 font-bold text-xs transition flex items-center justify-center gap-1.5">
+            <span>✨</span>
+            <span id="highlight-vertex-text">한 꼭짓점에 모인 면 강조</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Study & Table Panel (40% on desktop) -->
+    <section class="w-full lg:w-[40%] flex flex-col gap-4">
+
+      <!-- 1. Live Counting Card -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+        <div class="flex items-center justify-between gap-2 mb-3">
+          <div>
+            <h3 class="text-sm sm:text-base font-extrabold text-slate-800 flex items-center gap-1.5">
+              <span>🔢</span> 실시간 개수 세기 (<span id="counter-poly-name" class="text-indigo-600">정사면체</span>)
+            </h3>
+            <p class="text-xs text-slate-500">투명도를 낮추면 뒤쪽에 숨은 꼭짓점과 모서리도 쉽게 찾을 수 있어요!</p>
+          </div>
+          <button id="btn-reset-counts" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition shrink-0">
+            🔄 선택 초기화
+          </button>
+        </div>
+
+        <!-- V, E, F Live Counters -->
+        <div class="grid grid-cols-3 gap-2.5 mb-3">
+          <div id="box-count-v" class="rounded-xl border-2 border-rose-200 bg-rose-50/70 p-2.5 text-center transition">
+            <div class="text-xs font-bold text-rose-700">꼭짓점 (V)</div>
+            <div class="text-2xl font-black text-rose-600 my-0.5"><span id="count-v">0</span><span class="text-xs font-bold ml-0.5">개</span></div>
+            <div class="text-[11px] text-rose-800/75">꼭짓점 세기 모드</div>
+          </div>
+
+          <div id="box-count-e" class="rounded-xl border-2 border-amber-200 bg-amber-50/70 p-2.5 text-center transition">
+            <div class="text-xs font-bold text-amber-800">모서리 (E)</div>
+            <div class="text-2xl font-black text-amber-600 my-0.5"><span id="count-e">0</span><span class="text-xs font-bold ml-0.5">개</span></div>
+            <div class="text-[11px] text-amber-900/75">모서리 세기 모드</div>
+          </div>
+
+          <div id="box-count-f" class="rounded-xl border-2 border-indigo-200 bg-indigo-50/70 p-2.5 text-center transition">
+            <div class="text-xs font-bold text-indigo-700">면 (F)</div>
+            <div class="text-2xl font-black text-indigo-600 my-0.5"><span id="count-f">0</span><span class="text-xs font-bold ml-0.5">개</span></div>
+            <div class="text-[11px] text-indigo-800/75">면 세기 모드</div>
+          </div>
+        </div>
+
+        <!-- Euler's Formula Live Check -->
+        <div class="flex items-center justify-between text-xs bg-slate-50 px-3.5 py-2 rounded-xl border border-slate-200">
+          <span class="font-bold text-slate-600">오일러 공식 확인 (<span class="text-rose-600">V</span> - <span class="text-amber-600">E</span> + <span class="text-indigo-600">F</span>):</span>
+          <span id="euler-display" class="font-extrabold text-slate-800">0 - 0 + 0 = 0</span>
+        </div>
+      </div>
+
+      <!-- 2. Textbook Page 200 Summary Table Quiz (25 Cells) -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex-1 flex flex-col">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+          <div>
+            <h3 class="text-sm sm:text-base font-extrabold text-slate-800 flex items-center gap-1.5">
+              <span>📘</span> 정다면체 성질 정리 표 (교과서 200쪽)
+            </h3>
+            <p class="text-xs text-slate-500">5가지 정다면체의 25칸을 모두 채우면 상단 정답표가 해제됩니다!</p>
+          </div>
+          <span id="quiz-progress-badge" class="text-xs font-extrabold px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 border border-amber-300">
+            탐구 진행도: 0 / 25 완료
+          </span>
+        </div>
+
+        <!-- 5x5 Interactive Quiz Table -->
+        <div class="overflow-x-auto rounded-xl border border-slate-200">
+          <table class="w-full text-center border-collapse text-xs">
+            <thead>
+              <tr class="bg-slate-100 text-slate-700 font-extrabold border-b border-slate-200">
+                <th class="py-2 px-1.5 text-left pl-2.5 whitespace-nowrap">정다면체</th>
+                <th class="py-2 px-1 whitespace-nowrap">면의 모양</th>
+                <th class="py-2 px-1 leading-tight">한 꼭짓점<br/>면의 개수</th>
+                <th class="py-2 px-1 text-rose-700 whitespace-nowrap">꼭짓점(V)</th>
+                <th class="py-2 px-1 text-amber-700 whitespace-nowrap">모서리(E)</th>
+                <th class="py-2 px-1 text-indigo-700 whitespace-nowrap">면(F)</th>
+              </tr>
+            </thead>
+            <tbody id="summary-table-body" class="divide-y divide-slate-200">
+              <!-- Generated via JS -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Quiz Action Buttons & Feedback -->
+        <div class="mt-3 flex flex-col gap-2">
+          <div class="flex items-center gap-2">
+            <button id="btn-check-quiz" class="flex-1 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm shadow-sm transition">
+              ✅ 정답 확인하기
+            </button>
+            <button id="btn-fill-from-counter" class="py-2.5 px-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-xs transition" title="현재 3D 도형에서 세어본 개수를 표의 현재 행에 넣기">
+              📥 세어본 수 넣기
+            </button>
+            <button id="btn-reset-table" class="py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition">
+              표 초기화
+            </button>
+          </div>
+          <div id="quiz-feedback" class="hidden text-xs font-bold px-3 py-2 rounded-xl border"></div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Unlocked Summary Modal -->
+  <div id="summary-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-2xl w-full overflow-hidden">
+      <div class="bg-gradient-to-r from-indigo-600 to-emerald-600 px-5 py-4 text-white flex items-center justify-between">
+        <div>
+          <h3 class="text-base sm:text-lg font-extrabold flex items-center gap-2">
+            <span>🎉</span> 정다면체 성질 완전 정리표 (탐구 완료!)
+          </h3>
+          <p class="text-xs text-indigo-100 mt-0.5">모든 정다면체에서 오일러 공식 V - E + F = 2 가 항상 성립합니다!</p>
+        </div>
+        <button id="btn-close-modal" class="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 text-white font-bold flex items-center justify-center transition">
+          ✕
+        </button>
+      </div>
+
+      <div class="p-5 overflow-x-auto">
+        <table class="w-full text-center border-collapse text-xs sm:text-sm border border-slate-200 rounded-xl overflow-hidden">
+          <thead>
+            <tr class="bg-slate-100 text-slate-800 font-extrabold border-b border-slate-200">
+              <th class="py-2.5 px-3 text-left">정다면체</th>
+              <th class="py-2.5 px-2">면의 모양</th>
+              <th class="py-2.5 px-2">한 꼭짓점 면의 수</th>
+              <th class="py-2.5 px-2 text-rose-700">꼭짓점(V)</th>
+              <th class="py-2.5 px-2 text-amber-700">모서리(E)</th>
+              <th class="py-2.5 px-2 text-indigo-700">면(F)</th>
+              <th class="py-2.5 px-2 text-emerald-700">V - E + F</th>
+            </tr>
+          </thead>
+          <tbody id="modal-table-body" class="divide-y divide-slate-200">
+            <!-- Populated dynamically -->
+          </tbody>
+        </table>
+
+        <div class="mt-4 bg-indigo-50 border border-indigo-200 rounded-xl p-3.5 text-xs text-indigo-950 leading-relaxed">
+          <div class="font-extrabold text-indigo-800 mb-1">💡 왜 정다면체는 5가지뿐일까요?</div>
+          입체도형이 만들어지려면 한 꼭짓점에 <b>3개 이상의 면</b>이 모여야 하고, 모인 각의 크기의 합이 <b>360°보다 작아야</b> 합니다.<br/>
+          • <b>정삼각형(60°):</b> 3개(180°), 4개(240°), 5개(300°) 가능 (6개는 360°라 평면)<br/>
+          • <b>정사각형(90°):</b> 3개(270°) 가능 (4개는 360°라 평면)<br/>
+          • <b>정오각형(108°):</b> 3개(324°) 가능 (4개는 432°라 불가능)
+        </div>
+      </div>
+
+      <div class="bg-slate-50 px-5 py-3 border-t border-slate-200 flex justify-end">
+        <button id="btn-close-modal-bottom" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm transition">
+          확인 완료
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast-msg" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 text-white text-xs sm:text-sm font-bold px-4 py-2.5 rounded-full shadow-lg pointer-events-none opacity-0 transition-opacity duration-300 text-center max-w-[90vw]">
+  </div>
+
+  <script>
+    /**
+     * ============================================================================
+     * 1. 정다면체 교과서 데이터 정의 (중학교 1학년 수학 200쪽)
+     * ============================================================================
+     */
+    const POLYHEDRA_DATA = {
+      tetra: {
+        id: 'tetra',
+        name: '정사면체',
+        enName: 'Regular Tetrahedron',
+        faceShape: '정삼각형',
+        facesAtVertex: 3,
+        faceAngle: 60,
+        V: 4,
+        E: 6,
+        F: 4,
+        accentHex: '#f43f5e',
+        faceColor: 0xf43f5e,
+        tabActive: 'bg-rose-50 border-rose-500 text-rose-800 shadow-sm',
+        cameraDist: 3.7
+      },
+      cube: {
+        id: 'cube',
+        name: '정육면체',
+        enName: 'Cube (Regular Hexahedron)',
+        faceShape: '정사각형',
+        facesAtVertex: 3,
+        faceAngle: 90,
+        V: 8,
+        E: 12,
+        F: 6,
+        accentHex: '#0ea5e9',
+        faceColor: 0x0ea5e9,
+        tabActive: 'bg-sky-50 border-sky-500 text-sky-800 shadow-sm',
+        cameraDist: 4.3
+      },
+      octa: {
+        id: 'octa',
+        name: '정팔면체',
+        enName: 'Regular Octahedron',
+        faceShape: '정삼각형',
+        facesAtVertex: 4,
+        faceAngle: 60,
+        V: 6,
+        E: 12,
+        F: 8,
+        accentHex: '#f59e0b',
+        faceColor: 0xf59e0b,
+        tabActive: 'bg-amber-50 border-amber-500 text-amber-900 shadow-sm',
+        cameraDist: 4.0
+      },
+      dodeca: {
+        id: 'dodeca',
+        name: '정십이면체',
+        enName: 'Regular Dodecahedron',
+        faceShape: '정오각형',
+        facesAtVertex: 3,
+        faceAngle: 108,
+        V: 20,
+        E: 30,
+        F: 12,
+        accentHex: '#10b981',
+        faceColor: 0x10b981,
+        tabActive: 'bg-emerald-50 border-emerald-500 text-emerald-900 shadow-sm',
+        cameraDist: 4.9
+      },
+      icosa: {
+        id: 'icosa',
+        name: '정이십면체',
+        enName: 'Regular Icosahedron',
+        faceShape: '정삼각형',
+        facesAtVertex: 5,
+        faceAngle: 60,
+        V: 12,
+        E: 30,
+        F: 20,
+        accentHex: '#8b5cf6',
+        faceColor: 0x8b5cf6,
+        tabActive: 'bg-violet-50 border-violet-500 text-violet-900 shadow-sm',
+        cameraDist: 4.6
+      }
+    };
+
+    const POLY_ORDER = ['tetra', 'cube', 'octa', 'dodeca', 'icosa'];
+
+    /**
+     * ============================================================================
+     * 2. Web Audio API 효과음 & 토스트 알림
+     * ============================================================================
+     */
+    let audioCtx = null;
+    function playTone(type = 'select') {
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        const now = audioCtx.currentTime;
+        if (type === 'select') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(640, now);
+          osc.frequency.exponentialRampToValueAtTime(880, now + 0.08);
+          gain.gain.setValueAtTime(0.11, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+          osc.start(now);
+          osc.stop(now + 0.13);
+        } else if (type === 'deselect') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(480, now);
+          osc.frequency.exponentialRampToValueAtTime(340, now + 0.08);
+          gain.gain.setValueAtTime(0.09, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.11);
+          osc.start(now);
+          osc.stop(now + 0.12);
+        } else if (type === 'success') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(523.25, now);
+          osc.frequency.setValueAtTime(659.25, now + 0.1);
+          osc.frequency.setValueAtTime(783.99, now + 0.2);
+          osc.frequency.setValueAtTime(1046.5, now + 0.3);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+          osc.start(now);
+          osc.stop(now + 0.52);
+        }
+      } catch (err) {
+        // Ignore audio errors if blocked by browser policy
+      }
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast-msg');
+      toast.textContent = msg;
+      toast.classList.remove('opacity-0');
+      toast.classList.add('opacity-100');
+      clearTimeout(toast._timer);
+      toast._timer = setTimeout(() => {
+        toast.classList.remove('opacity-100');
+        toast.classList.add('opacity-0');
+      }, 2800);
+    }
+
+    /**
+     * ============================================================================
+     * 3. 정다면체 기하학 좌표 생성기
+     * ============================================================================
+     */
+    function getPolyhedronGeometryData(type) {
+      let rawVerts = [];
+      let faces = [];
+
+      if (type === 'tetra') {
+        rawVerts = [
+          [1, 1, 1],
+          [1, -1, -1],
+          [-1, 1, -1],
+          [-1, -1, 1]
+        ];
+        faces = [
+          [0, 1, 2],
+          [0, 3, 1],
+          [0, 2, 3],
+          [1, 3, 2]
+        ];
+      } else if (type === 'cube') {
+        rawVerts = [
+          [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1],
+          [-1, -1,  1], [1, -1,  1], [1, 1,  1], [-1, 1,  1]
+        ];
+        faces = [
+          [4, 5, 6, 7],
+          [1, 0, 3, 2],
+          [5, 1, 2, 6],
+          [0, 4, 7, 3],
+          [7, 6, 2, 3],
+          [0, 1, 5, 4]
+        ];
+      } else if (type === 'octa') {
+        rawVerts = [
+          [ 1,  0,  0], [-1,  0,  0],
+          [ 0,  1,  0], [ 0, -1,  0],
+          [ 0,  0,  1], [ 0,  0, -1]
+        ];
+        faces = [
+          [0, 2, 4], [2, 1, 4], [1, 3, 4], [3, 0, 4],
+          [2, 0, 5], [1, 2, 5], [3, 1, 5], [0, 3, 5]
+        ];
+      } else if (type === 'icosa') {
+        const phi = (1 + Math.sqrt(5)) / 2;
+        rawVerts = [
+          [-1,  phi, 0], [ 1,  phi, 0], [-1, -phi, 0], [ 1, -phi, 0],
+          [ 0, -1,  phi], [ 0,  1,  phi], [ 0, -1, -phi], [ 0,  1, -phi],
+          [ phi, 0, -1], [ phi, 0,  1], [-phi, 0, -1], [-phi, 0,  1]
+        ];
+        faces = [
+          [0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11],
+          [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8],
+          [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9],
+          [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]
+        ];
+      } else if (type === 'dodeca') {
+        const phi = (1 + Math.sqrt(5)) / 2;
+        const inv = 1 / phi;
+        rawVerts = [
+          [-1, -1, -1], [ 1, -1, -1], [ 1,  1, -1], [-1,  1, -1],
+          [-1, -1,  1], [ 1, -1,  1], [ 1,  1,  1], [-1,  1,  1],
+          [0, -inv, -phi], [0,  inv, -phi], [0, -inv,  phi], [0,  inv,  phi],
+          [-inv, -phi, 0], [ inv, -phi, 0], [ inv,  phi, 0], [-inv,  phi, 0],
+          [-phi, 0, -inv], [ phi, 0, -inv], [-phi, 0,  inv], [ phi, 0,  inv]
+        ];
+        faces = [
+          [10, 11, 6, 19, 5],
+          [11, 10, 4, 18, 7],
+          [8, 9, 3, 16, 0],
+          [9, 8, 1, 17, 2],
+          [14, 15, 7, 11, 6],
+          [15, 14, 2, 9, 3],
+          [12, 13, 5, 10, 4],
+          [13, 12, 0, 8, 1],
+          [19, 17, 2, 14, 6],
+          [17, 19, 5, 13, 1],
+          [16, 18, 4, 12, 0],
+          [18, 16, 3, 15, 7]
+        ];
+      }
+
+      const vectors = rawVerts.map(v => new THREE.Vector3(v[0], v[1], v[2]));
+
+      // Ensure outward counter-clockwise (CCW) winding order for every face
+      faces = faces.map(face => {
+        const center = new THREE.Vector3();
+        face.forEach(idx => center.add(vectors[idx]));
+        center.divideScalar(face.length);
+
+        const v0 = vectors[face[0]];
+        const v1 = vectors[face[1]];
+        const v2 = vectors[face[2]];
+        const e1 = new THREE.Vector3().subVectors(v1, v0);
+        const e2 = new THREE.Vector3().subVectors(v2, v0);
+        const normal = new THREE.Vector3().crossVectors(e1, e2);
+
+        if (normal.dot(center) < 0) {
+          return [...face].reverse();
+        }
+        return face;
+      });
+
+      // Normalize circumradius to 1.35 for consistent visual sizing
+      const maxR = Math.max(...vectors.map(v => v.length()));
+      const scale = 1.35 / maxR;
+      vectors.forEach(v => v.multiplyScalar(scale));
+
+      return { vertices: vectors, faces };
+    }
+
+    /**
+     * ============================================================================
+     * 4. Three.js 씬 설정 및 계층형 힌지(경첩) 전개도 트리 엔진
+     * ============================================================================
+     */
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+
+    const camera = new THREE.PerspectiveCamera(42, container.clientWidth / container.clientHeight, 0.1, 100);
+    camera.position.set(2.4, 2.0, 3.2);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    container.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.07;
+    controls.minDistance = 1.8;
+    controls.maxDistance = 12;
+
+    // Studio Lighting + Subtle Grid Floor
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.72);
+    scene.add(ambientLight);
+
+    const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.65);
+    dirLight1.position.set(5, 8, 6);
+    scene.add(dirLight1);
+
+    const dirLight2 = new THREE.DirectionalLight(0xe0e7ff, 0.35);
+    dirLight2.position.set(-5, -4, -5);
+    scene.add(dirLight2);
+
+    const gridHelper = new THREE.GridHelper(10, 20, 0xcbd5e1, 0xe2e8f0);
+    gridHelper.position.y = -1.65;
+    scene.add(gridHelper);
+
+    // Interactive State
+    let currentType = 'tetra';
+    let interactionMode = 'observe'; // 'observe' | 'vertex' | 'edge' | 'face'
+    let foldValue = 1.0;               // 1.0 = folded 3D solid, 0.0 = flat 2D net
+    let targetFold = 1.0;
+    let isAnimatingFold = false;
+    let currentOpacity = 0.90;
+    let isAutoRotating = false;
+    let isVertexHighlightActive = false;
+    let isAnswerUnlocked = false;
+
+    // Scene Groups & Pickable Meshes
+    let polyRootGroup = null;
+    let hingeNodes = []; // { pivot, axis, maxUnfoldAngle }
+    let clickableVertices = [];
+    let clickableEdges = [];
+    let clickableFaces = [];
+
+    // Deduplicated Selected Keys (for accurate counting even when unfolded or rotated)
+    const selectedVertexKeys = new Set();
+    const selectedEdgeKeys = new Set();
+    const selectedFaceIndices = new Set();
+
+    // Helper: create a polygon mesh from local 3D vertices (fan triangulation)
+    function createPolygonMesh(localVerts, colorHex, opacity) {
+      const positions = [];
+      const v0 = localVerts[0];
+      for (let i = 1; i < localVerts.length - 1; i++) {
+        const v1 = localVerts[i];
+        const v2 = localVerts[i + 1];
+        positions.push(v0.x, v0.y, v0.z);
+        positions.push(v1.x, v1.y, v1.z);
+        positions.push(v2.x, v2.y, v2.z);
+      }
+
+      const geom = new THREE.BufferGeometry();
+      geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geom.computeVertexNormals();
+
+      const mat = new THREE.MeshStandardMaterial({
+        color: colorHex,
+        roughness: 0.42,
+        metalness: 0.05,
+        transparent: true,
+        opacity: opacity,
+        side: THREE.DoubleSide,
+        polygonOffset: true,
+        polygonOffsetFactor: 1,
+        polygonOffsetUnits: 1
+      });
+
+      return new THREE.Mesh(geom, mat);
+    }
+
+    // Helper: create a cylindrical edge tube between two local points
+    function createEdgeCylinder(pA, pB, radius, colorHex) {
+      const dir = new THREE.Vector3().subVectors(pB, pA);
+      const len = dir.length();
+      const mid = new THREE.Vector3().addVectors(pA, pB).multiplyScalar(0.5);
+
+      const geom = new THREE.CylinderGeometry(radius, radius, len, 10);
+      const mat = new THREE.MeshStandardMaterial({
+        color: colorHex,
+        roughness: 0.35
+      });
+
+      const mesh = new THREE.Mesh(geom, mat);
+      mesh.position.copy(mid);
+      mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+      return mesh;
+    }
+
+    /**
+     * Build Hierarchical Hinged Net & 3D Polyhedron
+     */
+    function buildPolyhedronScene(type) {
+      if (polyRootGroup) {
+        scene.remove(polyRootGroup);
+      }
+
+      polyRootGroup = new THREE.Group();
+      hingeNodes = [];
+      clickableVertices = [];
+      clickableEdges = [];
+      clickableFaces = [];
+
+      selectedVertexKeys.clear();
+      selectedEdgeKeys.clear();
+      selectedFaceIndices.clear();
+      isVertexHighlightActive = false;
+      updateHighlightVertexUI();
+
+      const info = POLYHEDRA_DATA[type];
+      const { vertices, faces } = getPolyhedronGeometryData(type);
+
+      // Compute outward unit normal for each face
+      const faceNormals = faces.map(face => {
+        const e1 = new THREE.Vector3().subVectors(vertices[face[1]], vertices[face[0]]);
+        const e2 = new THREE.Vector3().subVectors(vertices[face[2]], vertices[face[0]]);
+        return new THREE.Vector3().crossVectors(e1, e2).normalize();
+      });
+
+      // Build adjacency graph between faces sharing an edge
+      const faceAdj = faces.map(() => []);
+      for (let i = 0; i < faces.length; i++) {
+        for (let j = i + 1; j < faces.length; j++) {
+          const shared = faces[i].filter(v => faces[j].includes(v));
+          if (shared.length === 2) {
+            // Find directed edge (u -> v) in face i's CCW order
+            let u = shared[0], v = shared[1];
+            const fi = faces[i];
+            for (let k = 0; k < fi.length; k++) {
+              const a = fi[k];
+              const b = fi[(k + 1) % fi.length];
+              if ((a === u && b === v) || (a === v && b === u)) {
+                u = a;
+                v = b;
+                break;
+              }
+            }
+            faceAdj[i].push({ neighbor: j, u, v });
+            faceAdj[j].push({ neighbor: i, u: v, v: u });
+          }
+        }
+      }
+
+      // Choose a bottom-facing face as the root face so unfolding lays nicely on a horizontal plane
+      let rootFaceIdx = 0;
+      let minY = Infinity;
+      faces.forEach((face, idx) => {
+        const avgY = face.reduce((acc, vi) => acc + vertices[vi].y, 0) / face.length;
+        if (avgY < minY) {
+          minY = avgY;
+          rootFaceIdx = idx;
+        }
+      });
+
+      // BFS Spanning Tree for unfolding net
+      const visited = new Set([rootFaceIdx]);
+      const queue = [rootFaceIdx];
+      const parentInfo = new Map(); // childFace -> { parentFace, u, v }
+
+      while (queue.length > 0) {
+        const curr = queue.shift();
+        for (const edge of faceAdj[curr]) {
+          if (!visited.has(edge.neighbor)) {
+            visited.add(edge.neighbor);
+            parentInfo.set(edge.neighbor, {
+              parentFace: curr,
+              u: edge.u,
+              v: edge.v
+            });
+            queue.push(edge.neighbor);
+          }
+        }
+      }
+
+      // Create a pivot Group for every face in world-folded coordinates first
+      const faceGroups = faces.map(() => new THREE.Group());
+
+      // Root face sits directly in polyRootGroup
+      polyRootGroup.add(faceGroups[rootFaceIdx]);
+
+      // Attach each child face to a hinge pivot located at edge midpoint (u, v)
+      parentInfo.forEach((rel, childIdx) => {
+        const pU = vertices[rel.u];
+        const pV = vertices[rel.v];
+        const hingeMid = new THREE.Vector3().addVectors(pU, pV).multiplyScalar(0.5);
+
+        // Hinge axis along parent's CCW edge u -> v
+        const axis = new THREE.Vector3().subVectors(pV, pU).normalize();
+
+        // Exterior angle between parent normal and child normal
+        const nParent = faceNormals[rel.parentFace];
+        const nChild = faceNormals[childIdx];
+        const dot = THREE.MathUtils.clamp(nParent.dot(nChild), -1, 1);
+        const exteriorAngle = Math.acos(dot);
+
+        // Determine rotation sign so child unfolds outward away from solid interior
+        const testQuat = new THREE.Quaternion().setFromAxisAngle(axis, exteriorAngle);
+        const rotatedChildNormal = nChild.clone().applyQuaternion(testQuat);
+        const sign = rotatedChildNormal.dot(nParent) > 0.99 ? 1 : -1;
+
+        const hingePivot = new THREE.Group();
+        hingePivot.position.copy(hingeMid);
+
+        // Express child face group relative to hingePivot
+        faceGroups[childIdx].position.copy(hingeMid).negate();
+        hingePivot.add(faceGroups[childIdx]);
+        faceGroups[rel.parentFace].add(hingePivot);
+
+        hingeNodes.push({
+          pivot: hingePivot,
+          axis,
+          maxUnfoldAngle: sign * exteriorAngle
+        });
+      });
+
+      // Populate each face group with its Face Mesh, Vertex Spheres, and Edge Cylinders
+      faces.forEach((faceVertIndices, fIdx) => {
+        const group = faceGroups[fIdx];
+        const localVerts = faceVertIndices.map(vi => vertices[vi].clone());
+
+        // 1) Face Polygon Mesh
+        const faceMesh = createPolygonMesh(localVerts, info.faceColor, currentOpacity);
+        faceMesh.userData = {
+          kind: 'face',
+          faceIndex: fIdx,
+          vertexIndices: faceVertIndices
+        };
+        group.add(faceMesh);
+        clickableFaces.push(faceMesh);
+
+        // 2) Vertex Spheres at corners of this face (tagged with canonical 3D vertex ID)
+        faceVertIndices.forEach((vIdx, cornerIdx) => {
+          const vPos = localVerts[cornerIdx];
+          const sphereGeom = new THREE.SphereGeometry(0.068, 16, 16);
+          const sphereMat = new THREE.MeshStandardMaterial({
+            color: 0x334155,
+            roughness: 0.3
+          });
+          const sphere = new THREE.Mesh(sphereGeom, sphereMat);
+          sphere.position.copy(vPos);
+          sphere.userData = {
+            kind: 'vertex',
+            vertexKey: `v_${vIdx}`,
+            vertexIndex: vIdx
+          };
+          group.add(sphere);
+          clickableVertices.push(sphere);
+        });
+
+        // 3) Edge Cylinders along edges of this face (tagged with canonical sorted vertex pair)
+        for (let k = 0; k < faceVertIndices.length; k++) {
+          const idxA = faceVertIndices[k];
+          const idxB = faceVertIndices[(k + 1) % faceVertIndices.length];
+          const pA = localVerts[k];
+          const pB = localVerts[(k + 1) % faceVertIndices.length];
+          const edgeKey = idxA < idxB ? `e_${idxA}_${idxB}` : `e_${idxB}_${idxA}`;
+
+          const cyl = createEdgeCylinder(pA, pB, 0.026, 0x1e293b);
+          cyl.userData = {
+            kind: 'edge',
+            edgeKey
+          };
+          group.add(cyl);
+          clickableEdges.push(cyl);
+        }
+      });
+
+      // Orient root face so when unfolded (0%) it lies flat horizontally on XZ plane
+      const rootNormal = faceNormals[rootFaceIdx];
+      const alignQuat = new THREE.Quaternion().setFromUnitVectors(rootNormal, new THREE.Vector3(0, 1, 0));
+      polyRootGroup.quaternion.copy(alignQuat);
+
+      scene.add(polyRootGroup);
+      applyFoldFactor(1.0);
+      updateCounterUI();
+    }
+
+    /**
+     * Apply Fold Factor (1.0 = 3D Solid, 0.0 = Flat 2D Net)
+     */
+    function applyFoldFactor(val) {
+      foldValue = THREE.MathUtils.clamp(val, 0, 1);
+      const unfoldRatio = 1.0 - foldValue;
+
+      hingeNodes.forEach(node => {
+        node.pivot.quaternion.setFromAxisAngle(node.axis, node.maxUnfoldAngle * unfoldRatio);
+      });
+
+      const pct = Math.round(foldValue * 100);
+      document.getElementById('slider-fold').value = pct;
+      document.getElementById('fold-percent-badge').textContent = `${pct}%`;
+
+      const playIcon = document.getElementById('play-fold-icon');
+      const playText = document.getElementById('play-fold-text');
+      if (foldValue > 0.5) {
+        playIcon.textContent = '📂';
+        playText.textContent = '전개도 펼치기';
+      } else {
+        playIcon.textContent = '📦';
+        playText.textContent = '입체로 접기';
+      }
+    }
+
+    /**
+     * ============================================================================
+     * 5. 꼭짓점 · 모서리 · 면 클릭 탐구 및 시각적 하이라이트
+     * ============================================================================
+     */
+    function refreshVisualHighlights() {
+      const info = POLYHEDRA_DATA[currentType];
+
+      // Determine highlighted vertex & incident faces if "한 꼭짓점에 모인 면 강조" is active
+      const highlightVertexId = 0; // Canonical vertex #0
+
+      // 1) Update Faces
+      clickableFaces.forEach(mesh => {
+        const { faceIndex, vertexIndices } = mesh.userData;
+        const isUserSelected = selectedFaceIndices.has(faceIndex);
+        const isIncidentToHighlightVertex = isVertexHighlightActive && vertexIndices.includes(highlightVertexId);
+
+        if (isIncidentToHighlightVertex) {
+          mesh.material.color.setHex(0xfef08a); // Bright warm yellow
+          mesh.material.emissive.setHex(0xd97706);
+          mesh.material.emissiveIntensity = 0.28;
+          mesh.material.opacity = Math.max(currentOpacity, 0.94);
+        } else if (isUserSelected) {
+          mesh.material.color.setHex(0x38bdf8); // Glowing sky highlight
+          mesh.material.emissive.setHex(0x2563eb);
+          mesh.material.emissiveIntensity = 0.35;
+          mesh.material.opacity = Math.max(currentOpacity, 0.95);
+        } else {
+          mesh.material.color.setHex(info.faceColor);
+          mesh.material.emissive.setHex(0x000000);
+          mesh.material.emissiveIntensity = 0;
+          mesh.material.opacity = currentOpacity;
+        }
+      });
+
+      // 2) Update Vertices
+      clickableVertices.forEach(sphere => {
+        const { vertexKey, vertexIndex } = sphere.userData;
+        const isUserSelected = selectedVertexKeys.has(vertexKey);
+        const isFocusVertex = isVertexHighlightActive && vertexIndex === highlightVertexId;
+
+        if (isFocusVertex) {
+          sphere.material.color.setHex(0xdc2626);
+          sphere.material.emissive.setHex(0xf59e0b);
+          sphere.material.emissiveIntensity = 0.6;
+          sphere.scale.setScalar(1.65);
+        } else if (isUserSelected) {
+          sphere.material.color.setHex(0xf43f5e);
+          sphere.material.emissive.setHex(0xe11d48);
+          sphere.material.emissiveIntensity = 0.55;
+          sphere.scale.setScalar(1.45);
+        } else {
+          sphere.material.color.setHex(0x334155);
+          sphere.material.emissive.setHex(0x000000);
+          sphere.material.emissiveIntensity = 0;
+          sphere.scale.setScalar(interactionMode === 'vertex' ? 1.15 : 1.0);
+        }
+      });
+
+      // 3) Update Edges
+      clickableEdges.forEach(cyl => {
+        const { edgeKey } = cyl.userData;
+        const isUserSelected = selectedEdgeKeys.has(edgeKey);
+
+        if (isUserSelected) {
+          cyl.material.color.setHex(0xf59e0b);
+          cyl.material.emissive.setHex(0xd97706);
+          cyl.material.emissiveIntensity = 0.5;
+          cyl.scale.set(1.75, 1, 1.75);
+        } else {
+          cyl.material.color.setHex(0x1e293b);
+          cyl.material.emissive.setHex(0x000000);
+          cyl.material.emissiveIntensity = 0;
+          const s = interactionMode === 'edge' ? 1.25 : 1.0;
+          cyl.scale.set(s, 1, s);
+        }
+      });
+    }
+
+    function updateCounterUI() {
+      const v = selectedVertexKeys.size;
+      const e = selectedEdgeKeys.size;
+      const f = selectedFaceIndices.size;
+
+      document.getElementById('count-v').textContent = v;
+      document.getElementById('count-e').textContent = e;
+      document.getElementById('count-f').textContent = f;
+
+      const eulerVal = v - e + f;
+      const eulerEl = document.getElementById('euler-display');
+      eulerEl.textContent = `${v} - ${e} + ${f} = ${eulerVal}`;
+      if (v > 0 && e > 0 && f > 0 && eulerVal === 2) {
+        eulerEl.className = 'font-extrabold text-emerald-700';
+      } else {
+        eulerEl.className = 'font-extrabold text-slate-800';
+      }
+    }
+
+    // Raycasting on pointer tap/click (distinguishing drag vs tap)
+    const raycaster = new THREE.Raycaster();
+    const pointerNDC = new THREE.Vector2();
+    let pointerDownPos = { x: 0, y: 0 };
+
+    renderer.domElement.addEventListener('pointerdown', (e) => {
+      pointerDownPos = { x: e.clientX, y: e.clientY };
+    });
+
+    renderer.domElement.addEventListener('pointerup', (e) => {
+      const dx = e.clientX - pointerDownPos.x;
+      const dy = e.clientY - pointerDownPos.y;
+      if (Math.hypot(dx, dy) > 6) return; // Ignore camera drag
+
+      if (interactionMode === 'observe') {
+        showToast('아래에서 [꼭짓점 세기], [모서리 세기], [면 세기] 버튼을 먼저 선택해 주세요!');
+        return;
+      }
+
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointerNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      pointerNDC.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+      raycaster.setFromCamera(pointerNDC, camera);
+
+      if (interactionMode === 'vertex') {
+        const hits = raycaster.intersectObjects(clickableVertices, false);
+        if (hits.length > 0) {
+          const key = hits[0].object.userData.vertexKey;
+          if (selectedVertexKeys.has(key)) {
+            selectedVertexKeys.delete(key);
+            playTone('deselect');
+          } else {
+            selectedVertexKeys.add(key);
+            playTone('select');
+          }
+          refreshVisualHighlights();
+          updateCounterUI();
+        }
+      } else if (interactionMode === 'edge') {
+        const hits = raycaster.intersectObjects(clickableEdges, false);
+        if (hits.length > 0) {
+          const key = hits[0].object.userData.edgeKey;
+          if (selectedEdgeKeys.has(key)) {
+            selectedEdgeKeys.delete(key);
+            playTone('deselect');
+          } else {
+            selectedEdgeKeys.add(key);
+            playTone('select');
+          }
+          refreshVisualHighlights();
+          updateCounterUI();
+        }
+      } else if (interactionMode === 'face') {
+        const hits = raycaster.intersectObjects(clickableFaces, false);
+        if (hits.length > 0) {
+          const fIdx = hits[0].object.userData.faceIndex;
+          if (selectedFaceIndices.has(fIdx)) {
+            selectedFaceIndices.delete(fIdx);
+            playTone('deselect');
+          } else {
+            selectedFaceIndices.add(fIdx);
+            playTone('select');
+          }
+          refreshVisualHighlights();
+          updateCounterUI();
+        }
+      }
+    });
+
+    /**
+     * ============================================================================
+     * 6. 한 꼭짓점에 모인 면 강조 기능
+     * ============================================================================
+     */
+    function updateHighlightVertexUI() {
+      const btn = document.getElementById('btn-highlight-vertex');
+      const label = document.getElementById('highlight-vertex-text');
+      const banner = document.getElementById('vertex-angle-banner');
+      const bannerText = document.getElementById('vertex-angle-text');
+
+      if (isVertexHighlightActive) {
+        const info = POLYHEDRA_DATA[currentType];
+        const totalAngle = info.faceAngle * info.facesAtVertex;
+        btn.classList.remove('bg-amber-50', 'text-amber-900', 'border-amber-300');
+        btn.classList.add('bg-amber-500', 'text-white', 'border-amber-600');
+        label.textContent = '강조 보기 끄기';
+
+        banner.classList.remove('hidden');
+        bannerText.textContent = `${info.faceShape}(${info.faceAngle}°) × ${info.facesAtVertex}개 = ${totalAngle}° < 360°`;
+      } else {
+        btn.classList.add('bg-amber-50', 'text-amber-900', 'border-amber-300');
+        btn.classList.remove('bg-amber-500', 'text-white', 'border-amber-600');
+        label.textContent = '한 꼭짓점에 모인 면 강조';
+        banner.classList.add('hidden');
+      }
+    }
+
+    function toggleVertexHighlight() {
+      isVertexHighlightActive = !isVertexHighlightActive;
+      if (isVertexHighlightActive && foldValue < 0.99) {
+        isAnimatingFold = false;
+        applyFoldFactor(1.0);
+      }
+      updateHighlightVertexUI();
+      refreshVisualHighlights();
+      playTone('select');
+    }
+
+    /**
+     * ============================================================================
+     * 7. 교과서 200쪽 정다면체 성질 정리 표 (25칸) & 정답 잠금 해제 시스템
+     * ============================================================================
+     */
+    const userQuizState = {
+      tetra:  { shape: '', atV: '', V: '', E: '', F: '' },
+      cube:   { shape: '', atV: '', V: '', E: '', F: '' },
+      octa:   { shape: '', atV: '', V: '', E: '', F: '' },
+      dodeca: { shape: '', atV: '', V: '', E: '', F: '' },
+      icosa:  { shape: '', atV: '', V: '', E: '', F: '' }
+    };
+
+    function renderQuizTable() {
+      const tbody = document.getElementById('summary-table-body');
+      tbody.innerHTML = '';
+
+      POLY_ORDER.forEach(pKey => {
+        const info = POLYHEDRA_DATA[pKey];
+        const ans = userQuizState[pKey];
+        const isCurrent = pKey === currentType;
+
+        const tr = document.createElement('tr');
+        tr.className = isCurrent ? 'bg-indigo-50/60 font-bold' : 'bg-white hover:bg-slate-50';
+
+        tr.innerHTML = `
+          <td class="py-2 px-1.5 text-left pl-2.5 whitespace-nowrap">
+            <button type="button" data-jump="${pKey}" class="flex items-center gap-1.5 font-extrabold text-slate-800 hover:text-indigo-600 transition">
+              <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color:${info.accentHex};"></span>
+              <span>${info.name}</span>
+            </button>
+          </td>
+          <td class="py-1.5 px-1">
+            <select data-poly="${pKey}" data-field="shape" class="quiz-cell w-full max-w-[84px] px-1 py-1.5 rounded-lg border border-slate-300 bg-white text-center text-xs font-bold focus:outline-none focus:border-indigo-500">
+              <option value="" ${ans.shape === '' ? 'selected' : ''}>선택</option>
+              <option value="정삼각형" ${ans.shape === '정삼각형' ? 'selected' : ''}>정삼각형</option>
+              <option value="정사각형" ${ans.shape === '정사각형' ? 'selected' : ''}>정사각형</option>
+              <option value="정오각형" ${ans.shape === '정오각형' ? 'selected' : ''}>정오각형</option>
+            </select>
+          </td>
+          <td class="py-1.5 px-1">
+            <input type="number" inputmode="numeric" min="1" max="10" data-poly="${pKey}" data-field="atV" value="${ans.atV}" placeholder="?"
+              class="quiz-cell w-11 py-1.5 rounded-lg border border-slate-300 bg-white text-center text-xs font-extrabold focus:outline-none focus:border-indigo-500" />
+          </td>
+          <td class="py-1.5 px-1">
+            <input type="number" inputmode="numeric" min="1" max="50" data-poly="${pKey}" data-field="V" value="${ans.V}" placeholder="?"
+              class="quiz-cell w-11 py-1.5 rounded-lg border border-slate-300 bg-white text-center text-xs font-extrabold text-rose-700 focus:outline-none focus:border-rose-500" />
+          </td>
+          <td class="py-1.5 px-1">
+            <input type="number" inputmode="numeric" min="1" max="50" data-poly="${pKey}" data-field="E" value="${ans.E}" placeholder="?"
+              class="quiz-cell w-11 py-1.5 rounded-lg border border-slate-300 bg-white text-center text-xs font-extrabold text-amber-700 focus:outline-none focus:border-amber-500" />
+          </td>
+          <td class="py-1.5 px-1">
+            <input type="number" inputmode="numeric" min="1" max="50" data-poly="${pKey}" data-field="F" value="${ans.F}" placeholder="?"
+              class="quiz-cell w-11 py-1.5 rounded-lg border border-slate-300 bg-white text-center text-xs font-extrabold text-indigo-700 focus:outline-none focus:border-indigo-500" />
+          </td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+
+      // Click polyhedron name in table to switch 3D model
+      tbody.querySelectorAll('[data-jump]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          selectPolyhedron(btn.dataset.jump);
+          playTone('select');
+        });
+      });
+
+      // Save input values on change/input
+      tbody.querySelectorAll('.quiz-cell').forEach(el => {
+        el.addEventListener('input', (e) => {
+          const p = e.target.dataset.poly;
+          const f = e.target.dataset.field;
+          userQuizState[p][f] = e.target.value.trim();
+          e.target.classList.remove('bg-emerald-100', 'border-emerald-500', 'bg-rose-100', 'border-rose-500');
+          updateProgressBadge();
+        });
+      });
+    }
+
+    function countSolvedCells() {
+      let solved = 0;
+      POLY_ORDER.forEach(p => {
+        const d = POLYHEDRA_DATA[p];
+        const a = userQuizState[p];
+        if (a.shape === d.faceShape) solved++;
+        if (a.atV !== '' && Number(a.atV) === d.facesAtVertex) solved++;
+        if (a.V !== '' && Number(a.V) === d.V) solved++;
+        if (a.E !== '' && Number(a.E) === d.E) solved++;
+        if (a.F !== '' && Number(a.F) === d.F) solved++;
+      });
+      return solved;
+    }
+
+    function updateProgressBadge() {
+      const solved = countSolvedCells();
+      const badge = document.getElementById('quiz-progress-badge');
+      badge.textContent = `탐구 진행도: ${solved} / 25 완료`;
+
+      if (solved === 25) {
+        badge.className = 'text-xs font-extrabold px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300';
+      } else {
+        badge.className = 'text-xs font-extrabold px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 border border-amber-300';
+      }
+    }
+
+    function unlockSummaryModalButton() {
+      if (isAnswerUnlocked) return;
+      isAnswerUnlocked = true;
+
+      const desktopBtn = document.getElementById('btn-answer-modal');
+      const mobileBtn = document.getElementById('btn-answer-modal-mobile');
+
+      desktopBtn.className = 'hidden xl:flex px-3.5 py-2 rounded-xl text-xs font-extrabold border-2 border-emerald-500 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 items-center gap-1.5 transition animate-pulse-gentle shadow-sm';
+      desktopBtn.querySelector('.lock-icon').textContent = '🔓';
+      desktopBtn.querySelector('.lock-label').textContent = '전체 정답표 보기';
+
+      mobileBtn.className = 'xl:hidden px-3 py-2 rounded-xl text-xs font-extrabold border-2 border-emerald-500 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 flex items-center gap-1.5 transition animate-pulse-gentle shadow-sm shrink-0';
+      mobileBtn.querySelector('.lock-icon').textContent = '🔓';
+      mobileBtn.querySelector('.lock-label').textContent = '정답표 보기';
+    }
+
+    function openSummaryModal() {
+      const tbody = document.getElementById('modal-table-body');
+      tbody.innerHTML = '';
+
+      POLY_ORDER.forEach(pKey => {
+        const d = POLYHEDRA_DATA[pKey];
+        const tr = document.createElement('tr');
+        tr.className = 'bg-white hover:bg-slate-50 font-semibold';
+        tr.innerHTML = `
+          <td class="py-2.5 px-3 text-left font-extrabold text-slate-800 flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full inline-block" style="background-color:${d.accentHex};"></span>
+            <span>${d.name}</span>
+          </td>
+          <td class="py-2.5 px-2 text-slate-700">${d.faceShape}</td>
+          <td class="py-2.5 px-2 text-slate-700">${d.facesAtVertex}개</td>
+          <td class="py-2.5 px-2 font-extrabold text-rose-600">${d.V}</td>
+          <td class="py-2.5 px-2 font-extrabold text-amber-600">${d.E}</td>
+          <td class="py-2.5 px-2 font-extrabold text-indigo-600">${d.F}</td>
+          <td class="py-2.5 px-2 font-extrabold text-emerald-700">${d.V} - ${d.E} + ${d.F} = 2</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      const modal = document.getElementById('summary-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeSummaryModal() {
+      const modal = document.getElementById('summary-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function validateAllQuizCells() {
+      let correctCount = 0;
+      let filledCount = 0;
+
+      document.querySelectorAll('.quiz-cell').forEach(el => {
+        const p = el.dataset.poly;
+        const f = el.dataset.field;
+        const val = el.value.trim();
+        const d = POLYHEDRA_DATA[p];
+
+        el.classList.remove('bg-emerald-100', 'border-emerald-500', 'bg-rose-100', 'border-rose-500', 'animate-shake');
+
+        if (val === '') return;
+        filledCount++;
+
+        let ok = false;
+        if (f === 'shape') ok = val === d.faceShape;
+        if (f === 'atV') ok = Number(val) === d.facesAtVertex;
+        if (f === 'V') ok = Number(val) === d.V;
+        if (f === 'E') ok = Number(val) === d.E;
+        if (f === 'F') ok = Number(val) === d.F;
+
+        if (ok) {
+          correctCount++;
+          el.classList.add('bg-emerald-100', 'border-emerald-500');
+        } else {
+          el.classList.add('bg-rose-100', 'border-rose-500');
+          void el.offsetWidth; // Reflow to retrigger shake
+          el.classList.add('animate-shake');
+        }
+      });
+
+      updateProgressBadge();
+
+      const fb = document.getElementById('quiz-feedback');
+      fb.classList.remove('hidden', 'bg-emerald-50', 'text-emerald-800', 'border-emerald-300', 'bg-amber-50', 'text-amber-800', 'border-amber-300');
+
+      if (filledCount === 0) {
+        fb.classList.add('bg-amber-50', 'text-amber-800', 'border-amber-300');
+        fb.textContent = '💡 빈칸을 먼저 채운 뒤 [정답 확인하기] 버튼을 눌러주세요!';
+        playTone('deselect');
+      } else if (correctCount === 25) {
+        fb.classList.add('bg-emerald-50', 'text-emerald-800', 'border-emerald-300');
+        fb.textContent = '🎉 축하합니다! 25칸을 모두 맞혀 전체 정답표가 잠금 해제되었습니다!';
+        playTone('success');
+        unlockSummaryModalButton();
+        openSummaryModal();
+      } else {
+        fb.classList.add('bg-amber-50', 'text-amber-800', 'border-amber-300');
+        fb.textContent = `📝 현재 25칸 중 ${correctCount}칸 정답입니다! (초록색: 정답 / 분홍색: 3D 도형에서 다시 세어보세요)`;
+        playTone('select');
+      }
+    }
+
+    /**
+     * ============================================================================
+     * 8. UI 이벤트 연결 및 초기화
+     * ============================================================================
+     */
+    function selectPolyhedron(type) {
+      currentType = type;
+      const info = POLYHEDRA_DATA[type];
+
+      document.querySelectorAll('.poly-tab').forEach(btn => {
+        const bType = btn.dataset.type;
+        if (bType === type) {
+          btn.className = `poly-tab px-3 py-2 rounded-xl text-xs sm:text-sm font-bold border-2 transition-all flex items-center gap-1.5 ${POLYHEDRA_DATA[bType].tabActive}`;
+        } else {
+          btn.className = 'poly-tab px-3 py-2 rounded-xl text-xs sm:text-sm font-bold border-2 border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-all flex items-center gap-1.5';
+        }
+      });
+
+      document.getElementById('badge-dot').style.backgroundColor = info.accentHex;
+      document.getElementById('badge-title').textContent = `${info.name} (${info.enName})`;
+      document.getElementById('badge-subtitle').textContent = `면의 모양: ${info.faceShape} · 한 꼭짓점에 모인 면: ${info.facesAtVertex}개`;
+      document.getElementById('counter-poly-name').textContent = info.name;
+
+      isAnimatingFold = false;
+      foldValue = 1.0;
+      targetFold = 1.0;
+      buildPolyhedronScene(type);
+      resetCamera();
+      renderQuizTable();
+    }
+
+    function resetCamera() {
+      const dist = POLYHEDRA_DATA[currentType].cameraDist;
+      camera.position.set(dist * 0.65, dist * 0.55, dist * 0.85);
+      controls.target.set(0, 0, 0);
+      controls.update();
+    }
+
+    // Polyhedron Tabs
+    document.querySelectorAll('.poly-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        selectPolyhedron(btn.dataset.type);
+        playTone('select');
+      });
+    });
+
+    // Counting Mode Buttons
+    document.querySelectorAll('.mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        interactionMode = btn.dataset.mode;
+
+        document.querySelectorAll('.mode-btn').forEach(b => {
+          const m = b.dataset.mode;
+          if (m === interactionMode) {
+            if (m === 'observe') b.className = 'mode-btn px-3 py-2 rounded-xl text-xs font-bold border-2 transition flex items-center justify-center gap-1 bg-slate-800 text-white border-slate-800 shadow-sm';
+            if (m === 'vertex') b.className = 'mode-btn px-3 py-2 rounded-xl text-xs font-bold border-2 transition flex items-center justify-center gap-1 bg-rose-600 text-white border-rose-600 shadow-sm';
+            if (m === 'edge') b.className = 'mode-btn px-3 py-2 rounded-xl text-xs font-bold border-2 transition flex items-center justify-center gap-1 bg-amber-500 text-white border-amber-500 shadow-sm';
+            if (m === 'face') b.className = 'mode-btn px-3 py-2 rounded-xl text-xs font-bold border-2 transition flex items-center justify-center gap-1 bg-indigo-600 text-white border-indigo-600 shadow-sm';
+          } else {
+            if (m === 'observe') b.className = 'mode-btn px-3 py-2 rounded-xl text-xs font-bold border-2 transition flex items-center justify-center gap-1 bg-white text-slate-700 border-slate-200 hover:bg-slate-50';
+            if (m === 'vertex') b.className = 'mode-btn px-3 py-2 rounded-xl text-xs font-bold border-2 transition flex items-center justify-center gap-1 bg-white text-rose-700 border-rose-200 hover:bg-rose-50';
+            if (m === 'edge') b.className = 'mode-btn px-3 py-2 rounded-xl text-xs font-bold border-2 transition flex items-center justify-center gap-1 bg-white text-amber-700 border-amber-200 hover:bg-amber-50';
+            if (m === 'face') b.className = 'mode-btn px-3 py-2 rounded-xl text-xs font-bold border-2 transition flex items-center justify-center gap-1 bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50';
+          }
+        });
+
+        refreshVisualHighlights();
+        playTone('select');
+      });
+    });
+
+    // Net Fold Slider & Animation Toggle
+    document.getElementById('slider-fold').addEventListener('input', (e) => {
+      isAnimatingFold = false;
+      if (isVertexHighlightActive) {
+        isVertexHighlightActive = false;
+        updateHighlightVertexUI();
+        refreshVisualHighlights();
+      }
+      applyFoldFactor(Number(e.target.value) / 100);
+    });
+
+    document.getElementById('btn-play-fold').addEventListener('click', () => {
+      if (isVertexHighlightActive) {
+        isVertexHighlightActive = false;
+        updateHighlightVertexUI();
+        refreshVisualHighlights();
+      }
+      targetFold = foldValue > 0.5 ? 0.0 : 1.0;
+      isAnimatingFold = true;
+      playTone('select');
+
+      if (targetFold === 0.0) {
+        const dist = POLYHEDRA_DATA[currentType].cameraDist * 1.45;
+        camera.position.set(0.01, dist, dist * 0.55);
+        controls.target.set(0, 0, 0);
+      } else {
+        resetCamera();
+      }
+    });
+
+    // Opacity Slider
+    document.getElementById('slider-opacity').addEventListener('input', (e) => {
+      const val = Number(e.target.value);
+      currentOpacity = val / 100;
+      document.getElementById('opacity-value').textContent = `${val}%`;
+      refreshVisualHighlights();
+    });
+
+    // Camera Reset & Auto Rotate
+    document.getElementById('btn-reset-cam').addEventListener('click', () => {
+      resetCamera();
+      playTone('select');
+    });
+
+    document.getElementById('btn-auto-rotate').addEventListener('click', () => {
+      isAutoRotating = !isAutoRotating;
+      controls.autoRotate = isAutoRotating;
+      controls.autoRotateSpeed = 2.2;
+      const btn = document.getElementById('btn-auto-rotate');
+      const label = document.getElementById('rotate-label');
+      if (isAutoRotating) {
+        btn.classList.add('bg-indigo-600', 'text-white', 'border-indigo-600');
+        btn.classList.remove('bg-white/95', 'text-slate-700');
+        label.textContent = '자동 회전: ON';
+      } else {
+        btn.classList.remove('bg-indigo-600', 'text-white', 'border-indigo-600');
+        btn.classList.add('bg-white/95', 'text-slate-700');
+        label.textContent = '자동 회전: OFF';
+      }
+      playTone('select');
+    });
+
+    // Highlight One Vertex Button
+    document.getElementById('btn-highlight-vertex').addEventListener('click', toggleVertexHighlight);
+
+    // Reset Selected Counts
+    document.getElementById('btn-reset-counts').addEventListener('click', () => {
+      selectedVertexKeys.clear();
+      selectedEdgeKeys.clear();
+      selectedFaceIndices.clear();
+      isVertexHighlightActive = false;
+      updateHighlightVertexUI();
+      refreshVisualHighlights();
+      updateCounterUI();
+      playTone('deselect');
+      showToast('선택한 꼭짓점·모서리·면 개수를 초기화했습니다.');
+    });
+
+    // Locked/Unlocked Summary Modal Triggers
+    function handleAnswerModalClick() {
+      if (!isAnswerUnlocked) {
+        playTone('deselect');
+        showToast('우측 정리 표의 25칸을 모두 정답으로 채우면 자동으로 열립니다!');
+        return;
+      }
+      playTone('select');
+      openSummaryModal();
+    }
+
+    document.getElementById('btn-answer-modal').addEventListener('click', handleAnswerModalClick);
+    document.getElementById('btn-answer-modal-mobile').addEventListener('click', handleAnswerModalClick);
+    document.getElementById('btn-close-modal').addEventListener('click', closeSummaryModal);
+    document.getElementById('btn-close-modal-bottom').addEventListener('click', closeSummaryModal);
+
+    // Quiz Check, Fill from Counter, and Reset Table
+    document.getElementById('btn-check-quiz').addEventListener('click', validateAllQuizCells);
+
+    document.getElementById('btn-fill-from-counter').addEventListener('click', () => {
+      const v = selectedVertexKeys.size;
+      const e = selectedEdgeKeys.size;
+      const f = selectedFaceIndices.size;
+
+      if (v === 0 && e === 0 && f === 0) {
+        showToast('먼저 왼쪽 3D 도형에서 꼭짓점·모서리·면을 클릭해 세어보세요!');
+        return;
+      }
+
+      if (v > 0) userQuizState[currentType].V = String(v);
+      if (e > 0) userQuizState[currentType].E = String(e);
+      if (f > 0) userQuizState[currentType].F = String(f);
+
+      renderQuizTable();
+      updateProgressBadge();
+      playTone('select');
+      showToast(`${POLYHEDRA_DATA[currentType].name} 행에 현재 세어본 개수를 입력했습니다!`);
+    });
+
+    document.getElementById('btn-reset-table').addEventListener('click', () => {
+      POLY_ORDER.forEach(p => {
+        userQuizState[p] = { shape: '', atV: '', V: '', E: '', F: '' };
+      });
+      renderQuizTable();
+      updateProgressBadge();
+      document.getElementById('quiz-feedback').classList.add('hidden');
+      playTone('deselect');
+      showToast('정리 표 입력 내용이 초기화되었습니다.');
+    });
+
+    /**
+     * ============================================================================
+     * 9. 반응형 리사이즈 및 메인 애니메이션 루프
+     * ============================================================================
+     */
+    function handleResize() {
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      if (w === 0 || h === 0) return;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    }
+    window.addEventListener('resize', handleResize);
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      if (isAnimatingFold) {
+        const diff = targetFold - foldValue;
+        if (Math.abs(diff) < 0.004) {
+          applyFoldFactor(targetFold);
+          isAnimatingFold = false;
+        } else {
+          applyFoldFactor(foldValue + diff * 0.09);
+        }
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    window.onload = function () {
+      handleResize();
+      selectPolyhedron('tetra');
+      updateProgressBadge();
+      animate();
+    };
+  </script>
+</body>
+</html>
